@@ -7,7 +7,7 @@ class DataHandler:
         # Initialize the ChromaDB persistent client and embedding model
         self.client = chromadb.PersistentClient(path=db_path)  # ChromaDB with persistent storage at the specified path
         self.model = SentenceTransformer(model_name)
-        self.collection = self.client.create_collection(name="food_places")
+        self.collection = self.client.get_or_create_collection(name="food_places")
 
     def load_data(self, file_path):
         """
@@ -22,25 +22,33 @@ class DataHandler:
         Preprocess the DataFrame and generate text embeddings for each row.
         :param df: DataFrame containing restaurant data.
         """
-        # Generate embeddings and store in ChromaDB
         for idx, row in df.iterrows():
-            combined_text = f"{row['description']} {row['cuisine']} {row['location']}"
+            combined_text = f"{row['description']} {row['location']}"
             embedding = self.model.encode(combined_text).tolist()
 
-            # Insert data into ChromaDB
-            self.collection.add(
-                documents=[combined_text],  # Add text for reference
-                metadatas=[{
+            # Check if the ID already exists in the collection
+            existing_docs = self.collection.get(ids=[str(idx)])  # Fetch existing document by ID
+
+            if existing_docs['ids']:  # If the ID exists
+                # Check if the metadata is the same
+                existing_metadata = existing_docs['metadatas'][0]  # Get the existing metadata for comparison
+                new_metadata = {
                     "restaurant_name": row['restaurant_name'],
                     "location": row['location'],
                     "rating": row['rating'],
                     "image_url": row['image_url']
-                }],
+                }
+                if existing_metadata == new_metadata:
+                    continue  # Skip if metadata is the same
+
+            # Insert or update the collection
+            self.collection.add(
+                documents=[combined_text],  # Add text for reference
+                metadatas=[new_metadata],
                 embeddings=[embedding],
                 ids=[str(idx)]  # Use index as ID
             )
-
-        print(f"Inserted {len(df)} records into ChromaDB.")
+            print(f"Inserted/Updated {row['restaurant_name']} into ChromaDB.")
 
     def get_collection(self):
         return self.collection  # Return the ChromaDB collection instance
