@@ -41,7 +41,7 @@ This version improves the efficiency of the system by directly involving the **L
 | **Version 2**   | *[17-10-24]*        | Introduced a more integrated approach where the LLM conditions its response based on retrieved data and the user prompt, enhancing the relevance and accuracy of generated responses. |
 | **Version 3**   | *[]*                | work in progress  |
 
-
+[Minutes of meeting](https://docs.google.com/document/d/1gdL7CJOaNd8MnhYb0y1chHbEExJO4ZT7/edit?usp=sharing&ouid=112881498588871004049&rtpof=true&sd=true)
 
 ---
 

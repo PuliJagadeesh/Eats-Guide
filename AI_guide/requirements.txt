@@ -7,3 +7,5 @@ langchain_google_genai
 chromadb
 sentence-transformers
 python-dotenv
+langchain-openai
+tavily-python

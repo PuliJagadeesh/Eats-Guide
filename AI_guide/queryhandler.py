@@ -47,9 +47,10 @@ class QueryHandler:
             """
             Firstly understand the question, if the question is not relevant to the retrieved data
             tell the user that you do not have sufficient information about the given question.
+            
             And if the question is relevant to retrieved data, then generate the response from the 
             retrieved data, and you do not have to access the image urls, you can just give the related
-            urls along with their meta data. 
+            urls along with their meta data 
             
             <context>
             {context}
