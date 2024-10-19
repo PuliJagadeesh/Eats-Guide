@@ -7,7 +7,7 @@ def main():
     data_handler = DataHandler()
 
     # Load the CSV data from the specified path
-    df = data_handler.load_data("D:/Projects/Liminal/app/AI_guide/restaurants.csv")
+    df = data_handler.load_data("D:/Projects/Liminal/AI_guide/resources/restaurants.csv")
 
     # Process the data and store embeddings in the local ChromaDB instance
     data_handler.process_data(df)
