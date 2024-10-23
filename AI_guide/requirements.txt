@@ -9,3 +9,4 @@ sentence-transformers
 python-dotenv
 langchain-openai
 tavily-python
+bs4

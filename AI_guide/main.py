@@ -1,18 +1,12 @@
 from chromadblocal import DataHandler
 from queryhandler import QueryHandler
 
-# Main function to coordinate the process
+# Main function to coordinate the querying process
 def main():
-    # Initialize the DataHandler with local ChromaDB hosting
+    # Initialize the DataHandler to access the ChromaDB collection
     data_handler = DataHandler()
 
-    # Load the CSV data from the specified path
-    df = data_handler.load_data("D:/Projects/Liminal/AI_guide/resources/restaurants.csv")
-
-    # Process the data and store embeddings in the local ChromaDB instance
-    data_handler.process_data(df)
-
-    # Initialize the QueryHandler with the ChromaDB collection from DataHandler
+    # Initialize the QueryHandler with the ChromaDB collection
     query_handler = QueryHandler(data_handler.get_collection())
 
     while True:

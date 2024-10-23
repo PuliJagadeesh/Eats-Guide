@@ -54,3 +54,9 @@ class DataHandler:
 
     def get_collection(self):
         return self.collection  # Return the ChromaDB collection instance
+
+# If you want to run this file separately to update the vector DB
+if __name__ == "__main__":
+    data_handler = DataHandler()
+    df = data_handler.load_data("D:/Projects/Liminal/AI_guide/resources/restaurants.csv")
+    data_handler.process_data(df)
