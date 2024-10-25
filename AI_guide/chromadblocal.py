@@ -3,7 +3,7 @@ from sentence_transformers import SentenceTransformer
 import chromadb
 
 class DataHandler:
-    def __init__(self, model_name='sentence-transformers/all-MiniLM-L6-v2', db_path="D:/Projects/Liminal/AI_guide/AI_guide/chromadb_col"):
+    def __init__(self, model_name='sentence-transformers/all-MiniLM-L6-v2', db_path="D:/Projects/Liminal/AI_guide/AI_guide/chromadb"):
         # Initialize the ChromaDB persistent client and embedding model
         self.client = chromadb.PersistentClient(path=db_path)  # ChromaDB with persistent storage at the specified path
         self.model = SentenceTransformer(model_name)
@@ -22,16 +22,22 @@ class DataHandler:
         Preprocess the DataFrame and generate text embeddings for each row.
         :param df: DataFrame containing restaurant data.
         """
+        count = 0
         for idx, row in df.iterrows():
-            combined_text = f"{row['description']} {row['location']}"
+
+            combined_text = f"{row['Cuisine']} {row['Location']} {row['Locality']} {row['Cost']}"
             embedding = self.model.encode(combined_text).tolist()
 
             # Create new metadata for each row
             new_metadata = {
-                "restaurant_name": row['restaurant_name'],
-                "location": row['location'],
-                "rating": row['rating'],
-                "image_url": row['image_url']
+                "restaurant_name": row['Name'],
+                "location": row['Location'],
+                "locality": row['Locality'],
+                "city": row['City'],
+                "votes": row['Votes'],
+                "cost": row['Cost'],
+                "rating": row['Rating']
+               # "image_url": row['image_url']
             }
 
             # Check if the ID already exists in the collection
@@ -50,7 +56,9 @@ class DataHandler:
                 embeddings=[embedding],
                 ids=[str(idx)]  # Use index as ID
             )
-            print(f"Inserted/Updated {row['restaurant_name']} into ChromaDB.")
+            count = count+1
+            if count%10 == 0:
+                print(f"Inserted/Updated {count} rows into ChromaDB.")
 
     def get_collection(self):
         return self.collection  # Return the ChromaDB collection instance
@@ -58,5 +66,5 @@ class DataHandler:
 # If you want to run this file separately to update the vector DB
 if __name__ == "__main__":
     data_handler = DataHandler()
-    df = data_handler.load_data("D:/Projects/Liminal/AI_guide/resources/restaurants.csv")
+    df = data_handler.load_data("D:/Projects/Liminal/AI_guide/resources/restaurants_1.csv")
     data_handler.process_data(df)

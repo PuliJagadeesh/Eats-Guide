@@ -47,12 +47,22 @@ class QueryHandler:
         # LLM prompt template
         prompt_template = ChatPromptTemplate.from_template(
             """
-            Firstly understand the question, if the question is not relevant to the retrieved data
-            tell the user that you do not have sufficient information about the given question.
+            These are the details of the dataset stored in vectordb:
+            1. Name: This is the name of the restaurant, 
+            2. Location, locality and city are the address of the restaurant located,
+            3. Cuisine: The types of cuisines available in that restaurant,
+            4. Rating: Average rating given to this place
+            5. Votes: Number of people who participated in voting
+            6. Cost: Average cost of food 
 
-            And if the question is relevant to retrieved data, then generate the response from the 
-            retrieved data, and you do not have to access the image urls, you can just give the related
-            urls along with their meta data 
+            Firstly understand the question, and check if the question is related to any of the data available in 
+            vectordb. 
+            IF the question is relevant[like if the question is about food related and not about complete
+            different topic like hiking, clubbing or temples etc] to retrieved data, then generate the response using the 
+            retrieved data for the user query, ELSE Please generate a response in the following format: 
+            "I DO NOT have enough information about your query, but i will be happy to help you with 
+             restaurants across India"
+             
 
             <context>
             {context}
@@ -83,8 +93,9 @@ class QueryHandler:
                 if isinstance(metadata, dict):
                     print(f"Restaurant: {metadata.get('restaurant_name', 'N/A')}")
                     print(f"Location: {metadata.get('location', 'N/A')}")
+                    print(f"Locality: {metadata.get('locality', 'N/A')}")
                     print(f"Rating: {metadata.get('rating', 'N/A')}")
-                    print(f"Image URL: {metadata.get('image_url', 'N/A')}")
+                   # print(f"Image URL: {metadata.get('image_url', 'N/A')}")
                     print("-" * 40)
                 else:
                     print("Unexpected result format:", metadata)
