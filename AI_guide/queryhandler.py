@@ -38,31 +38,41 @@ class QueryHandler:
         if not metadatas:
             return "I don't know."
 
-        # Construct context from metadata
+        flat_metadatas = [item for sublist in metadatas for item in sublist]
+
+        # Construct context from metadata of all retrieved results
         context = "\n".join(
-            f"Restaurant: {metadata.get('restaurant_name', 'N/A')}, Location: {metadata.get('location', 'N/A')}, Rating: {metadata.get('rating', 'N/A')}, Image URL: {metadata.get('image_url', 'N/A')}"
-            for metadata in metadatas[0]  # Take the first batch of results
+            f"Restaurant: {metadata.get('restaurant_name', 'N/A')}, "
+            f"Location: {metadata.get('location', 'N/A')}, "
+            f"Locality: {metadata.get('locality', 'N/A')}, "
+            f"City: {metadata.get('city', 'N/A')}, "
+            f"Votes: {metadata.get('votes', 'N/A')}, "
+            f"Cost: {metadata.get('cost', 'N/A')}, "
+            f"Rating: {metadata.get('rating', 'N/A')}"
+            for metadata in flat_metadatas  # Loop over the flattened list
         )
 
         # LLM prompt template
         prompt_template = ChatPromptTemplate.from_template(
             """
-            These are the details of the dataset stored in vectordb:
-            1. Name: This is the name of the restaurant, 
-            2. Location, locality and city are the address of the restaurant located,
-            3. Cuisine: The types of cuisines available in that restaurant,
-            4. Rating: Average rating given to this place
-            5. Votes: Number of people who participated in voting
-            6. Cost: Average cost of food 
+            
+            These are the details of the data that is retrieved to you:
 
-            Firstly understand the question, and check if the question is related to any of the data available in 
-            vectordb. 
-            IF the question is relevant[like if the question is about food related and not about complete
-            different topic like hiking, clubbing or temples etc] to retrieved data, then generate the response using the 
-            retrieved data for the user query, ELSE Please generate a response in the following format: 
-            "I DO NOT have enough information about your query, but i will be happy to help you with 
-             restaurants across India"
-             
+            Name: Name of the restaurant.
+            Location, locality, and city: Address details of the restaurant.
+            Cuisine: Types of cuisines available at the restaurant.
+            Rating: Average rating.
+            Votes: Number of people who rated.
+            Cost: Average cost of food.
+            
+            You are a restaurant recommender with knowledge of restaurants, cuisines, ratings, and costs 
+            across various cities in India. Please respond to queries based on the provided details. 
+            If there’s incomplete information, suggest the best options and encourage follow-up questions.
+            When generating a response:
+            
+            Do not include any statements about checking or confirming data availability. 
+            If the query matches the restaurant data available, respond directly with restaurant recommendations,
+            ratings, and any relevant details.            
 
             <context>
             {context}

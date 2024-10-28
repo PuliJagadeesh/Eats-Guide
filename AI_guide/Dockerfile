@@ -10,10 +10,8 @@ COPY . /app
 # Install dependencies from requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Set up cache and flagging directories with the correct permissions
-ENV TRANSFORMERS_CACHE=/app/cache
-ENV GRADIO_FLAGGING_DIR=/app/gradio_flagged
-RUN mkdir -p /app/cache /app/gradio_flagged && chmod -R 777 /app/cache /app/gradio_flagged
+# Set a custom cache directory for Hugging Face Transformers
+ENV HF_HOME=/app/cache/huggingface
 
 # Copy the .env file for environment variables
 COPY .env /app/.env

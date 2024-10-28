@@ -17,6 +17,13 @@ class DataHandler:
         """
         return pd.read_csv(file_path)
 
+    def get_unique_cities(self):
+        """
+        Retrieve unique cities from the restaurant dataset.
+        :return: List of unique cities.
+        """
+        df = self.load_data("D:/Projects/Liminal/AI_guide/resources/restaurants_1.csv")
+        return sorted(df['City'].unique().tolist())
     def process_data(self, df):
         """
         Preprocess the DataFrame and generate text embeddings for each row.

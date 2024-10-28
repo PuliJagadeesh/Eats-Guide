@@ -20,3 +20,8 @@ print("Missing values in each column:")
 print(missing_values)
 
 print(df['City'].value_counts())
+unique_cuisines = df['Cuisine'].str.split(', ').explode().value_counts()
+filtered_cuisines = unique_cuisines[unique_cuisines > 350]
+
+# Sort the filtered cuisines and print
+print(filtered_cuisines.sort_values(ascending=False))
