@@ -38,8 +38,8 @@ This version improves the efficiency of the system by directly involving the **L
 | **Version** | **Date Updated** | **Summary** |
 |-------------|------------------|-------------|
 | **Version 1**   | *[15-10-24]*        | This approach separates the **retrieval** and **generation** tasks, focusing on augmenting LLM outputs with relevant data from vectordb. |
-| **Version 2**   | *[18-10-24]*        | The **LLM** conditions its response based on both the **retrieved information** and the **user prompt**, resulting in a more context-aware and relevant output |
-| **Version 3**   | *[]*                | work in progress  |
+| **Version 2.1**   | *[18-10-24]*        | The **LLM** conditions its response based on both the **retrieved information** and the **user prompt**, resulting in a more context-aware and relevant output |
+| **Version 2.2**   | *[28-10-24]*        | Updated the llm prompt and able to receive more related results. Need to work on hosting in cloud like hugging face space or render or vercel  |
 
 [Minutes of meeting](https://docs.google.com/document/d/1gdL7CJOaNd8MnhYb0y1chHbEExJO4ZT7/edit?usp=sharing&ouid=112881498588871004049&rtpof=true&sd=true)
 
