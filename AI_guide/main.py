@@ -5,11 +5,11 @@ from queryhandler import QueryHandler
 # Initialize the DataHandler to access the ChromaDB collection and get unique cities
 data_handler = DataHandler()
 available_cities = data_handler.get_unique_cities()  # Get list of unique cities
-
+# Initialize the QueryHandler with the ChromaDB collection
+query_handler = QueryHandler(data_handler.get_collection())
 # Function to handle user queries
 def process_query(user_prompt):
-    # Initialize the QueryHandler with the ChromaDB collection
-    query_handler = QueryHandler(data_handler.get_collection())
+
 
     # Query the collection and return top results
     results = query_handler.query(user_prompt, n_results=5)
