@@ -1,103 +1,134 @@
-import os
 import requests
-from bs4 import BeautifulSoup
-from langchain_groq import ChatGroq
-from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.exceptions import OutputParserException
-from dotenv import load_dotenv
 import pandas as pd
+import os
+from dotenv import load_dotenv
+import time
 
+# Load environment variables from .env file
 load_dotenv()
 
+# Your Google API Key
+API_KEY = os.getenv('PLACES_API_KEY')
 
-class Chain:
-    def __init__(self):
-        self.llm = ChatGroq(temperature=0, groq_api_key=os.getenv("GROQ_API_KEY"), model_name="llama-3.1-70b-versatile")
+# File paths
+input_csv = "D:/Projects/Liminal/AI_Guide/resources/restaurants_1.csv"  # Input CSV file
+output_dir = 'D:/Projects/Liminal/AI_Guide/resources/restaurant_images'  # Directory to save images
+PHOTO_BASE_URL = "https://maps.googleapis.com/maps/api/place/photo"
+output_csv = "D:/Projects/Liminal/AI_Guide/resources/output.csv"
+# Create output directory if it doesn't exist
+os.makedirs(output_dir, exist_ok=True)
 
-    def extract_restaurants(self, cleaned_text):
-        prompt_extract = PromptTemplate.from_template(
-            """
-            ### SCRAPED TEXT FROM WEBSITE:
-            {page_data}
-            ### INSTRUCTION:
-            The scraped text is from the restaurant listing of a website (TripAdvisor).
-            Your job is to extract the restaurant details and return them in JSON format containing the following keys: 
-            `restaurant_name`, `cuisine`, `rating`, `location`, `description`, `image_url`.
-            Only return valid JSON.
-            ### VALID JSON (NO PREAMBLE):
-            """
-        )
-        chain_extract = prompt_extract | self.llm
-        res = chain_extract.invoke(input={"page_data": cleaned_text})
-        try:
-            json_parser = JsonOutputParser()
-            res = json_parser.parse(res.content)
-        except OutputParserException:
-            raise OutputParserException("Context too big. Unable to parse restaurants.")
-        return res if isinstance(res, list) else [res]
+def get_place_id(query, api_key):
+    """
+    Search for a place using Google Places API and return the place_id.
+    """
+    url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+    params = {
+        'query': query,
+        'key': api_key
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
 
-    def save_to_csv(self, restaurant_data, file_name="restaurants.csv"):
-        df = pd.DataFrame(restaurant_data)
-        df.to_csv(file_name, index=False)
-        print(f"Data saved to {file_name}")
+    if data['status'] == 'OK' and len(data['results']) > 0:
+        return data['results'][0]['place_id']
+    else:
+        print(f"Place not found for query: {query}")
+        return None
 
-    def save_images(self, restaurant_data, image_folder="restaurant_images"):
-        # Create the directory if it does not exist
-        os.makedirs(image_folder, exist_ok=True)
+def get_photo_reference(place_id, api_key):
+    """
+    Get the photo reference for a place using its place_id.
+    """
+    url = "https://maps.googleapis.com/maps/api/place/details/json"
+    params = {
+        'place_id': place_id,
+        'key': api_key
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
 
-        for restaurant in restaurant_data:
-            if 'image_url' in restaurant and restaurant['image_url']:
-                # Get the image URL
-                image_url = restaurant['image_url']
-                try:
-                    # Send a GET request to download the image
-                    img_response = requests.get(image_url)
-                    if img_response.status_code == 200:
-                        # Create a file name based on the restaurant name
-                        image_name = f"{restaurant['restaurant_name'].replace(' ', '_')}.jpg"
-                        image_path = os.path.join(image_folder, image_name)
+    if data['status'] == 'OK' and 'photos' in data['result']:
+        return data['result']['photos'][0]['photo_reference']
+    else:
+        print(f"No photos found for place_id: {place_id}")
+        return None
 
-                        # Save the image
-                        with open(image_path, 'wb') as f:
-                            f.write(img_response.content)
-                            print(f"Saved image for {restaurant['restaurant_name']} at {image_path}")
-                    else:
-                        print(
-                            f"Failed to download image for {restaurant['restaurant_name']}. Status code: {img_response.status_code}")
-                except Exception as e:
-                    print(f"Error downloading image for {restaurant['restaurant_name']}: {e}")
+def download_photo(photo_reference, api_key, output_path):
+    """
+    Download and save a photo using the photo reference.
+    """
+    url = f"https://maps.googleapis.com/maps/api/place/photo"
+    params = {
+        'maxwidth': 400,  # Specify the image resolution (can also use maxheight)
+        'maxheight': 400,
+        'photo_reference': photo_reference,  # Use the exact parameter name
+        'key': api_key
+    }
+    response = requests.get(url, params=params, stream=True)
 
+    # Ensure the response is successful
+    if response.status_code == 200:
+        with open(output_path, 'wb') as file:
+            for chunk in response.iter_content(1024):
+                file.write(chunk)
+        print(f"Image saved to {output_path}")
+    else:
+        print(f"Failed to download image: {response.status_code} - {response.text}")
+
+def main():
+    """
+    Main script to process the input CSV, fetch place IDs, photo references, download images,
+    and save the image paths in the dataframe.
+    """
+    # Load the CSV file
+    df = pd.read_csv(input_csv)
+
+    # Ensure the CSV contains the required columns
+    required_columns = ['Name', 'Location', 'Locality', 'City']
+    for col in required_columns:
+        if col not in df.columns:
+            print(f"CSV file must contain the following columns: {', '.join(required_columns)}")
+            return
+
+    # Create a new column for image paths
+    df['Image_Path'] = None
+
+    # Iterate through each row in the CSV
+    for index, row in df.iterrows():
+        # Construct a detailed search query
+        name = row['Name']
+        location = row['Location']
+        locality = row['Locality']
+        city = row['City']
+        query = f"{name}, {location}, {locality}, {city}"
+
+        print(f"Processing: {query}")
+
+        # Step 1: Get place_id
+        place_id = get_place_id(query, API_KEY)
+        if not place_id:
+            print(f"Skipping: Could not find place ID for {query}")
+            continue
+
+        # Step 2: Get photo_reference
+        photo_reference = get_photo_reference(place_id, API_KEY)
+        if not photo_reference:
+            print(f"Skipping: Could not find photo reference for {query}")
+            continue
+
+        # Step 3: Download the photo
+        safe_name = "".join(c if c.isalnum() else "_" for c in name)  # Sanitize the filename
+        output_path = os.path.join(output_dir, f"{safe_name}.jpg")
+        download_photo(photo_reference, API_KEY, output_path)
+
+        # Step 4: Save the output path in the dataframe
+        df.at[index, 'Image_Path'] = output_path
+
+    # Save the updated dataframe to a new CSV file
+    #output_csv = os.path.join(output_dir, "output.csv")
+    df.to_csv(output_csv, index=False)
+    print(f"Updated dataframe saved to {output_csv}")
 
 if __name__ == "__main__":
-    # Scraping the TripAdvisor page
-    url = "https://www.swiggy.com/city/madurai/best-restaurants"
-
-    # Set the headers with a valid User-Agent to simulate a real browser request
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
-    }
-
-    # Make the request with headers
-    response = requests.get(url, headers=headers)
-
-    # Check the response status
-    if response.status_code == 200:
-        print("Successfully retrieved the page.")
-        soup = BeautifulSoup(response.text, 'html.parser')
-
-        # Assuming you want to extract all visible text from the page
-        cleaned_text = soup.get_text(separator=" ", strip=True)
-
-        # Initialize Chain and extract restaurant details
-        chain = Chain()
-        restaurant_data = chain.extract_restaurants(cleaned_text)
-
-        # Save the extracted data to CSV
-        chain.save_to_csv(restaurant_data)
-
-        # Save images of the restaurants
-        chain.save_images(restaurant_data)
-
-    else:
-        print(f"Failed to retrieve the page. Status code: {response.status_code}")
+    main()

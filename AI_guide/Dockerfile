@@ -7,8 +7,12 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
-# Install dependencies from requirements.txt
+# Copy requirements.txt to the working directory in the container
+COPY requirements.txt .
+
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+
 
 # Set a custom cache directory for Hugging Face Transformers
 ENV HF_HOME=/app/cache/huggingface

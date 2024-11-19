@@ -11,7 +11,7 @@ load_dotenv()
 
 class QueryHandler:
     def __init__(self, collection, llm_model_name='llama-3.2-1b-preview',
-                 embed_model_name='sentence-transformers/all-MiniLM-L6-v2', max_history=5):
+                 embed_model_name='sentence-transformers/all-MiniLM-L6-v2', max_history=50):
         self.collection = collection
         self.embed_model = SentenceTransformer(embed_model_name)
 
@@ -35,15 +35,12 @@ class QueryHandler:
             n_results=n_results
         )
 
-        # Store the prompt and result in the history
-        self.history.append((user_prompt, results))
-
         return results
 
     def get_recent_context(self):
-        # Retrieve recent history for context, format it as a string
+        # Retrieve recent history for context, including LLM-generated responses
         context_parts = []
-        for idx, (prompt, results) in enumerate(self.history):
+        for idx, (prompt, results, llm_response) in enumerate(self.history):
             metadatas = results.get('metadatas', [])
             flat_metadatas = [item for sublist in metadatas for item in sublist]
             context = "\n".join(
@@ -56,7 +53,8 @@ class QueryHandler:
                 f"Rating: {metadata.get('rating', 'N/A')}"
                 for metadata in flat_metadatas
             )
-            context_parts.append(f"Query: {prompt}\nResults:\n{context}")
+            # Include the LLM-generated response for each entry
+            context_parts.append(f"Query: {prompt}\nResults:\n{context}\nResponse:\n{llm_response}")
 
         return "\n".join(context_parts)
 
@@ -100,20 +98,19 @@ class QueryHandler:
             When generating responses:
 
             - Respond directly with restaurant recommendations and relevant details.
-            - Sort the recommendations by relevance, based on a calculated **Relevance Score** (details below), without showing the calculations to the user.
+            - Sort the recommendations by relevance, based on the following strategy:
 
-            **Relevance Score Calculation**:
-            The Relevance Score is calculated as follows:
+              **Relevance Strategy**:
+              Order restaurants using a calculated relevance score to determine the best fit based on user preferences:
+              - **Cuisine Match**: Prioritize restaurants that match the specified cuisine, if mentioned.
+              - **Rating**: Higher ratings contribute to relevance, favoring restaurants with 4.0+ ratings.
+              - **Votes**: Restaurants with more votes gain slightly higher relevance to reflect popularity.
+              - **Cost Match**: Prefer restaurants within the user’s specified budget or the closest match.
+              Each restaurant is evaluated on these criteria, with higher weighting given to direct matches on cuisine, budget, and rating.
 
-            Relevance Score = (Rating / 5) * W1 + log(1 + Votes) * W2 + (1 / Cost) * W3
-
-            where:
-            - **Rating** is the restaurant's rating out of 5.
-            - **Votes** is the number of ratings for the restaurant.
-            - **Cost** is the average cost per person.
-            - **W1, W2, and W3** are weights. Set W1 = W2 = W3 = 1 for this calculation.
-
-            **Sort** the list of restaurants in descending order of their Relevance Score, placing the most relevant recommendation at the top. Do not show any calculations or mention the Relevance Score directly in the response.
+            Do not calculate or show relevance scores directly to the user. Instead, use this strategy to sort restaurants in descending order of relevance.
+            Use the recent context only if you require additional information from previous conversation. 
+            If the query is not related to the information available to you, make a generic response and let the user know you would be more than happy to help with restaurant recommendations
 
             <context>
             {context}
@@ -127,5 +124,8 @@ class QueryHandler:
 
         # Use the LLM to generate the output
         response = self.llm.invoke(prompt)  # Pass the prompt string directly
+
+        # Store the prompt, results, and LLM-generated response in the history
+        self.history.append((user_prompt, results, response.content))
 
         return response.content  # Adjust this line to match the actual attribute of the response
