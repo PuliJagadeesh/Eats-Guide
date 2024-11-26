@@ -1,4 +1,4 @@
-*.png
-*.jpg
+#*.png
+#*.jpg
 # ignore my env files to not reveal the api keys
 *.env 
