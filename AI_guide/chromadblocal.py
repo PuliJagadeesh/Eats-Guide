@@ -3,7 +3,7 @@ from sentence_transformers import SentenceTransformer
 import chromadb
 
 class DataHandler:
-    def __init__(self, model_name='sentence-transformers/all-MiniLM-L6-v2', db_path="D:/Projects/Liminal/AI_guide/AI_guide/chromadb"):
+    def __init__(self, model_name='sentence-transformers/all-MiniLM-L6-v2', db_path="D:/Projects/Liminal/AI_guide/AI_guide/chromadb_img"):
         # Initialize the ChromaDB persistent client and embedding model
         self.client = chromadb.PersistentClient(path=db_path)  # ChromaDB with persistent storage at the specified path
         self.model = SentenceTransformer(model_name)
@@ -22,7 +22,7 @@ class DataHandler:
         Retrieve unique cities from the restaurant dataset.
         :return: List of unique cities.
         """
-        df = self.load_data("D:/Projects/Liminal/AI_guide/resources/restaurants_1.csv")
+        df = self.load_data("D:/Projects/Liminal/AI_Guide/resources/restaurant_uuid_images.csv")
         return sorted(df['City'].unique().tolist())
     def process_data(self, df):
         """
@@ -43,8 +43,9 @@ class DataHandler:
                 "city": row['City'],
                 "votes": row['Votes'],
                 "cost": row['Cost'],
-                "rating": row['Rating']
-               # "image_url": row['image_url']
+                "rating": row['Rating'],
+                "uuid": row['Unique_ID'],
+                "image_path": row['Image_Path']
             }
 
             # Check if the ID already exists in the collection
@@ -73,5 +74,5 @@ class DataHandler:
 # If you want to run this file separately to update the vector DB
 if __name__ == "__main__":
     data_handler = DataHandler()
-    df = data_handler.load_data("D:/Projects/Liminal/AI_guide/resources/restaurants_1.csv")
+    df = data_handler.load_data("D:/Projects/Liminal/AI_Guide/resources/restaurant_uuid_images.csv")
     data_handler.process_data(df)

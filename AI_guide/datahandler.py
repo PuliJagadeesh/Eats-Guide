@@ -1,7 +1,7 @@
 # this file is to clean, impute and analyse the data.
 import pandas as pd
 
-
+'''
 file_path = 'D:/Projects/Liminal/AI_Guide/resources/restaurants_1.csv'  #
 
 #df = pd.read_csv(file_path)
@@ -25,3 +25,11 @@ filtered_cuisines = unique_cuisines[unique_cuisines > 350]
 
 # Sort the filtered cuisines and print
 print(filtered_cuisines.sort_values(ascending=False))
+'''
+file_path = "D:/Projects/Liminal/AI_Guide/resources/output.csv"  # Replace with your actual file path
+df = pd.read_csv(file_path)
+
+# Check for missing values in the 'image path' column
+missing_values_count = df['Image_Path'].isnull().sum()
+
+print(f"Number of missing values in 'image path' column: {missing_values_count}")

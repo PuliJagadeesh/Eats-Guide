@@ -11,7 +11,7 @@ load_dotenv()
 
 class QueryHandler:
     def __init__(self, collection, llm_model_name='llama-3.2-1b-preview',
-                 embed_model_name='sentence-transformers/all-MiniLM-L6-v2', max_history=50):
+                 embed_model_name='sentence-transformers/all-MiniLM-L6-v2', max_history=5):
         self.collection = collection
         self.embed_model = SentenceTransformer(embed_model_name)
 
@@ -26,13 +26,59 @@ class QueryHandler:
         # Session history management
         self.history = deque(maxlen=max_history)  # Store last 'max_history' interactions
 
+    def extract_filters(self, user_prompt):
+        """
+        Use the LLM to extract filter criteria from the user prompt.
+        """
+        extraction_prompt = ChatPromptTemplate.from_template(
+            """
+            Analyze the following query and extract filters for restaurant recommendations:
+            - Cuisine type (if mentioned): Look for specific cuisine preferences.
+            - Location: Identify the city or locality.
+            - Price range: Look for a maximum or minimum price (e.g., $100).
+
+            If any of these details are missing, return them as None.
+            Query: {input}
+            Provide the extracted filters in JSON format like:
+            {{
+                "cuisine_type": "string or None",
+                "location": "string or None",
+                "price": "int or None"
+            }}
+            """
+        )
+        prompt = extraction_prompt.format(input=user_prompt)
+        response = self.llm.invoke(prompt)
+        try:
+            filters = eval(response.content)  # Convert string response to dictionary
+        except Exception as e:
+            filters = {"cuisine_type": None, "location": None, "price": None}
+        return filters
+
     def query(self, user_prompt, n_results=5):
+        """
+        Process the user query and retrieve filtered results from ChromaDB.
+        """
+        # Generate embedding for the user prompt
         query_embedding = self.embed_model.encode(user_prompt).tolist()
 
-        # Perform the query in ChromaDB
+        # Extract filters using the LLM
+        filters = self.extract_filters(user_prompt)
+
+        # Create the filter dictionary for ChromaDB
+        chromadb_filter = {}
+        if filters.get("cuisine_type"):
+            chromadb_filter["cuisine_type"] = filters["cuisine_type"]
+        if filters.get("location"):
+            chromadb_filter["location"] = filters["location"]
+        if filters.get("price"):
+            chromadb_filter["price"] = {"$lte": filters["price"]}
+
+        # Perform the query in ChromaDB with filters
         results = self.collection.query(
             query_embeddings=[query_embedding],
-            n_results=n_results
+            n_results=n_results,
+            where=chromadb_filter
         )
 
         return results
@@ -66,17 +112,21 @@ class QueryHandler:
         metadatas = results.get('metadatas', [])
         flat_metadatas = [item for sublist in metadatas for item in sublist]
 
-        # Construct context from metadata
-        context = "\n".join(
-            f"Restaurant: {metadata.get('restaurant_name', 'N/A')}, "
-            f"Location: {metadata.get('location', 'N/A')}, "
-            f"Locality: {metadata.get('locality', 'N/A')}, "
-            f"City: {metadata.get('city', 'N/A')}, "
-            f"Votes: {metadata.get('votes', 'N/A')}, "
-            f"Cost: {metadata.get('cost', 'N/A')}, "
-            f"Rating: {metadata.get('rating', 'N/A')}"
-            for metadata in flat_metadatas
-        )
+        # Construct recommendation text and collect image paths
+        recommendation_text = ""
+        image_paths = []  # To store image paths for rendering
+        for metadata in flat_metadatas:
+            recommendation_text += (
+                f"Restaurant: {metadata.get('restaurant_name', 'N/A')}, "
+                f"Location: {metadata.get('location', 'N/A')}, "
+                f"Locality: {metadata.get('locality', 'N/A')}, "
+                f"City: {metadata.get('city', 'N/A')}, "
+                f"Votes: {metadata.get('votes', 'N/A')}, "
+                f"Cost: {metadata.get('cost', 'N/A')}, "
+                f"Rating: {metadata.get('rating', 'N/A')}\n"
+            )
+            if metadata.get('image_path'):  # Append valid image paths
+                image_paths.append(metadata['image_path'])
 
         # LLM prompt template with session context
         prompt_template = ChatPromptTemplate.from_template(
@@ -95,22 +145,7 @@ class QueryHandler:
 
             You are a restaurant recommender with knowledge of restaurants, cuisines, ratings, and costs across various cities in India. Respond to queries based on the provided details and recommend the most relevant options based on user preferences. If information is incomplete, provide the best suggestions and encourage follow-up questions.
 
-            When generating responses:
-
-            - Respond directly with restaurant recommendations and relevant details.
-            - Sort the recommendations by relevance, based on the following strategy:
-
-              **Relevance Strategy**:
-              Order restaurants using a calculated relevance score to determine the best fit based on user preferences:
-              - **Cuisine Match**: Prioritize restaurants that match the specified cuisine, if mentioned.
-              - **Rating**: Higher ratings contribute to relevance, favoring restaurants with 4.0+ ratings.
-              - **Votes**: Restaurants with more votes gain slightly higher relevance to reflect popularity.
-              - **Cost Match**: Prefer restaurants within the user’s specified budget or the closest match.
-              Each restaurant is evaluated on these criteria, with higher weighting given to direct matches on cuisine, budget, and rating.
-
-            Do not calculate or show relevance scores directly to the user. Instead, use this strategy to sort restaurants in descending order of relevance.
-            Use the recent context only if you require additional information from previous conversation. 
-            If the query is not related to the information available to you, make a generic response and let the user know you would be more than happy to help with restaurant recommendations
+            Use the recent context only if you require additional information from previous conversations. If the query is not related to the information available to you, make a generic response and let the user know you would be more than happy to help with restaurant recommendations.
 
             <context>
             {context}
@@ -120,7 +155,7 @@ class QueryHandler:
         )
 
         # Generate the prompt by formatting the template
-        prompt = prompt_template.format(recent_context=recent_context, context=context, input=user_prompt)
+        prompt = prompt_template.format(recent_context=recent_context, context=recommendation_text, input=user_prompt)
 
         # Use the LLM to generate the output
         response = self.llm.invoke(prompt)  # Pass the prompt string directly
@@ -128,4 +163,4 @@ class QueryHandler:
         # Store the prompt, results, and LLM-generated response in the history
         self.history.append((user_prompt, results, response.content))
 
-        return response.content  # Adjust this line to match the actual attribute of the response
+        return response.content, image_paths  # Return both recommendation text and image paths
