@@ -10,7 +10,7 @@ load_dotenv()
 
 
 class QueryHandler:
-    def __init__(self, collection, llm_model_name='llama-3.2-1b-preview',
+    def __init__(self, collection, llm_model_name='llama-3.3-70b-versatile',
                  embed_model_name='sentence-transformers/all-MiniLM-L6-v2', max_history=5):
         self.collection = collection
         self.embed_model = SentenceTransformer(embed_model_name)

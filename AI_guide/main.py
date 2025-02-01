@@ -34,7 +34,7 @@ iface = gr.Interface(
         gr.Textbox(label="Recommended Restaurants"),  # Text output for recommendations
         gr.Gallery(label="Restaurant Images")  # Gallery to display images
     ],
-    title="Restaurant Query System",
+    title="EatsGuide [Taste, Explore, Enjoy]",
     description=display_greeting_and_cities()  # Show greeting and cities above the input prompt
 )
 
