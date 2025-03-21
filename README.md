@@ -1,4 +1,4 @@
-## **Eats-Guide**
+## **Eats-Guide **
 Developing an AI guide using LLMs and Vector DBs to retrieve data.
 
 This project focuses on developing and enhancing a system that combines **large language models (LLMs)** with **vector databases (vectordb)** for efficient retrieval and generation of context-aware responses. By leveraging embeddings and retrieval-augmented generation techniques, 
